@@ -37,9 +37,17 @@
     const candidate = string(value, 85);
     return /^mdi:[a-z0-9]+(?:-[a-z0-9]+)*$/.test(candidate) ? candidate : fallback;
   };
-  // Internal, absolute paths only: never navigate to arbitrary URLs or other origins.
+  // Only same-origin, internal Home Assistant paths. Full URLs are accepted only
+  // when the hostname and origin match the currently open HA instance.
   const path = (value) => {
-    const candidate = string(value, 255);
+    let candidate = string(value, 255);
+    if (/^https?:\/\//i.test(candidate)) {
+      try {
+        const url = new URL(candidate);
+        if (url.origin !== window.location.origin || url.username || url.password) return '';
+        candidate = url.pathname + url.search + url.hash;
+      } catch (_) { return ''; }
+    }
     return /^\/(?!\/)[^\\<>\u0000-\u0020]*$/.test(candidate) ? candidate : '';
   };
   const areaId = (value) => string(value, 110);
@@ -116,16 +124,22 @@
     try {
       const result = await hass.callWS({ type: 'lovelace/dashboards/list' });
       if (Array.isArray(result)) dashboards = result;
-    } catch (_) { /* The default dashboard may still be accessible. */ }
+    } catch (error) {
+      console.warn(`[${EDITOR_TAG}] Elenco dashboard non disponibile:`, error);
+      /* The default dashboard may still be accessible. */
+    }
     const targets = [{ slug: null, name: 'Dashboard principale' }];
-    for (const dashboard of dashboards.slice(0, 30)) {
+    for (const dashboard of dashboards.slice(0, 60)) {
       const slug = string(dashboard?.url_path, 90);
       if (slug && /^[a-z0-9_-]+$/.test(slug) && slug !== 'lovelace') {
         targets.push({ slug, name: string(dashboard.title, 90) || slug });
       }
     }
-    const responses = await Promise.allSettled(targets.map((target) =>
-      hass.callWS({ type: 'lovelace/config', url_path: target.slug, force: false })));
+    const responses = [];
+    for (let index = 0; index < targets.length; index += 4) {
+      responses.push(...await Promise.allSettled(targets.slice(index, index + 4).map((target) =>
+        hass.callWS({ type: 'lovelace/config', url_path: target.slug, force: false }))));
+    }
     const choices = new Map();
     responses.forEach((outcome, dashboardIndex) => {
       if (outcome.status !== 'fulfilled' || !Array.isArray(outcome.value?.views)) return;
@@ -145,7 +159,7 @@
   }
 
   const CARD_CSS = `
-    :host{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;font:var(--ha-font-size-m,14px) var(--ha-font-family-body,Roboto,Arial,sans-serif)}
+    :host{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,Roboto,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif));font-size:14px;font-weight:400}
     *,*:before,*:after{box-sizing:border-box}
     .rn-container{container-type:inline-size;width:100%;min-width:0;--rn-accent:#0a7156;--rn-bg:#fafbf9;--rn-tile:#f0f2ef;--rn-hover:#e5eee5;--rn-circle:#fff;--rn-line:#e0e5df;--rn-fg:#18221c;--rn-muted:#56675c}
     .rn-container.rn-dark{--rn-accent:#0e795d;--rn-bg:#101211;--rn-tile:#191c1a;--rn-hover:#242b26;--rn-circle:#282b29;--rn-line:#2b302c;--rn-fg:#f5f7f4;--rn-muted:#bbc5bd}
@@ -156,21 +170,28 @@
     .rn-title b{color:var(--rn-accent);font-weight:800}
     .rn-heading{margin:2px 4px 17px}
     .rn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-    .rn-room{appearance:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0;min-height:124px;padding:15px 15px 14px;border:0;border-radius:16px;background:var(--rn-tile);color:var(--rn-fg);text-decoration:none;text-align:left;transition:background .15s,transform .15s}
-    .rn-room[href]:hover{background:var(--rn-hover)}.rn-room[href]:active{transform:translateY(1px)}
+    .rn-room{appearance:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0;min-height:124px;padding:15px 15px 14px;border:1px solid transparent;border-radius:16px;background:var(--rn-tile);color:var(--rn-fg);text-decoration:none;text-align:left;transition:background .15s,transform .15s,border-color .15s}
+    .rn-room[href]:hover{background:var(--rn-hover)}
+    .rn-room[href]:active{transform:translateY(1px);border-color:var(--rn-accent)}
+    .rn-room.rn-selected{border-color:var(--rn-accent)}
     .rn-room:not([href]){cursor:default;opacity:.67}
     .rn-room-icon{display:grid;place-items:center;width:47px;height:47px;border-radius:13px;background:var(--rn-circle);color:var(--rn-muted)}
     .rn-room-icon ha-icon{--mdc-icon-size:29px;width:29px;height:29px}
-    .rn-room-name{font-weight:540;font-size:14px;line-height:1.32;overflow-wrap:anywhere;max-width:100%}
+    .rn-room-name{font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere;max-width:100%}
     .rn-links{border-top:1px solid var(--rn-line);margin-top:17px;padding-top:15px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
-    .rn-chip{display:flex;align-items:center;gap:8px;min-height:35px;padding:9px 13px;border:0;border-radius:12px;background:var(--rn-tile);color:var(--rn-fg);text-decoration:none;font-size:12px;font-weight:500;white-space:nowrap}
-    .rn-chip[href]:hover{background:var(--rn-hover)}.rn-chip:not([href]){opacity:.67;cursor:default}
-    .rn-chip ha-icon{--mdc-icon-size:17px;width:17px;height:17px;color:var(--rn-muted)}
+    .rn-chip{display:flex;align-items:center;gap:8px;min-height:35px;padding:9px 13px;border:0;border-radius:12px;background:var(--rn-accent);color:#fff;text-decoration:none;font-size:12px;font-weight:500;white-space:nowrap}
+    .rn-chip[href]:hover{background:var(--rn-accent)}.rn-chip:not([href]){opacity:.67;cursor:default}
+    .rn-chip ha-icon{--mdc-icon-size:17px;width:17px;height:17px;color:#fff}
     .rn-empty{font-size:13px;line-height:1.5;color:var(--rn-muted);padding:15px 4px}
     a:focus-visible{outline:2px solid var(--rn-accent);outline-offset:2px}
     @container (min-width:760px){.rn-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
     @container (max-width:439px){.rn-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rn-room{min-height:117px;padding:13px}.rn-room-icon{width:43px;height:43px;border-radius:12px}.rn-room-icon ha-icon{--mdc-icon-size:26px;width:26px;height:26px}.rn-room-name{font-size:12px}.rn-shell:not(.rn-borderless){padding:13px;border-radius:22px}.rn-title{font-size:23px}}
     @container (max-width:300px){.rn-room{padding:10px;min-height:106px}.rn-room-name{font-size:11px}.rn-chip{flex:1;justify-content:center}}
+    /* Tablets keep three room columns even inside narrow Home Assistant layout columns. */
+    @media (min-width:600px) and (max-width:1199px), (min-width:600px) and (any-pointer:coarse){
+      @container (min-width:0px){.rn-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @container (max-width:439px){.rn-room{min-height:106px;padding:10px}.rn-room-icon{width:39px;height:39px}.rn-room-icon ha-icon{--mdc-icon-size:25px;width:25px;height:25px}.rn-room-name{font-size:12px}}
+    }
     @media(prefers-reduced-motion:reduce){.rn-room{transition:none}}
   `;
 
@@ -187,6 +208,14 @@
       this._fetchSeq = 0;
       this._unsubPromise = null;
       this._darkMode = null;
+      this._selectedArea = null;
+      this.shadowRoot.addEventListener('click', (event) => {
+        const room = event.target.closest('a.rn-room[href]');
+        if (!room || !room.dataset.areaId) return;
+        this._selectedArea = room.dataset.areaId;
+        this.shadowRoot.querySelectorAll('a.rn-room').forEach((tile) =>
+          tile.classList.toggle('rn-selected', tile.dataset.areaId === this._selectedArea));
+      });
     }
     static getConfigElement() { return document.createElement(EDITOR_TAG); }
     static getStubConfig() { const { type, ...rest } = normalizeConfig(); return rest; }
@@ -245,7 +274,7 @@
       const tiles = rooms.map((r) => {
         const dest = path(cfg.area_paths[r.area_id]);
         const label = escapeHtml(r.name);
-        return `<a class="rn-room" ${dest ? `href="${escapeHtml(dest)}"` : `aria-disabled="true" title="Configura una pagina per ${label}"`}
+        return `<a class="rn-room ${dest && r.area_id === this._selectedArea ? 'rn-selected' : ''}" data-area-id="${escapeHtml(r.area_id)}" ${dest ? `href="${escapeHtml(dest)}"` : `aria-disabled="true" title="Configura una pagina per ${label}"`}
           ${dest ? `aria-label="Apri ${label}"` : `aria-label="${label}: destinazione non configurata"`}>
           <span class="rn-room-icon">${markupIcon(r.icon)}</span><span class="rn-room-name">${label}</span></a>`;
       }).join('');
@@ -268,7 +297,7 @@
   }
 
   const EDITOR_CSS = `
-    :host{display:block;color:var(--primary-text-color,#18221c);font-family:var(--ha-font-family-body,Roboto,Arial,sans-serif);font-size:var(--ha-font-size-m,14px)}
+    :host{display:block;color:var(--primary-text-color,#18221c);font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,Roboto,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif));font-size:14px}
     *,*:before,*:after{box-sizing:border-box}.rn-editor{display:block}
     .rn-tabs,.rn-subtabs{display:flex;gap:5px;overflow-x:auto;padding-bottom:14px;border-bottom:1px solid var(--divider-color,#dfe5df)}
     .rn-tab,.rn-subtab{border:0;background:transparent;color:var(--secondary-text-color,#536359);border-radius:13px;padding:10px 13px;white-space:nowrap;font:inherit;cursor:pointer}
@@ -291,6 +320,14 @@
     .rn-no-native .rn-selector-fallback{display:block}.rn-no-native ha-selector{display:none}
     .rn-inline{display:flex;gap:8px;align-items:center}.rn-inline ha-selector{flex:1;min-width:0}
     .rn-no-native select.rn-input[multiple]{min-height:125px}
+    .rn-view-search{margin-bottom:6px}
+    .rn-view-results{display:block;max-height:240px;overflow-y:auto;border:1px solid var(--divider-color,#dfe5df);border-radius:10px;padding:4px;background:var(--card-background-color,var(--primary-background-color,#fff))}
+    .rn-view-option{display:flex;align-items:flex-start;gap:6px;width:100%;background:transparent;border:0;border-radius:7px;color:var(--primary-text-color,#17231c);padding:9px 10px;text-align:left;font:inherit;cursor:pointer}
+    .rn-view-option:hover,.rn-view-option:focus-visible{background:var(--secondary-background-color,#f0f2ef);outline-offset:0}
+    .rn-view-option.is-selected{font-weight:650;color:var(--primary-color,#0b7457)}
+    .rn-view-empty{padding:10px;font-size:12px;color:var(--secondary-text-color,#536359)}
+    .rn-view-option small{display:block;margin-top:2px;color:var(--secondary-text-color,#536359);font-size:11px;overflow-wrap:anywhere}
+    .rn-manual-label{font-size:12px;margin:14px 0 5px;color:var(--secondary-text-color,#536359)}
   `;
 
   class RoomsNavigationCardEditor extends HTMLElement {
@@ -311,6 +348,7 @@
       this._pendingChange = false;
       this.shadowRoot.addEventListener('click', (event) => this._click(event));
       this.shadowRoot.addEventListener('change', (event) => this._change(event));
+      this.shadowRoot.addEventListener('input', (event) => this._input(event));
     }
     setConfig(raw) { this._config = normalizeConfig(raw); this._render(); }
     set hass(value) {
@@ -393,13 +431,25 @@
     }
     _destinationField(kind, id, current) {
       const attr = kind === 'area' ? 'data-area-path' : 'data-link-path';
-      const picker = this._views.length
-        ? `<div data-view-slot="${kind}:${escapeHtml(id)}"></div>`
-        : '<p class="rn-muted">Elenco viste non disponibile: puoi inserire il percorso manualmente.</p>';
+      const key = `${kind}:${id}`;
+      const currentPath = path(current);
+      const known = this._views.some((view) => view.value === currentPath);
+      const status = !this._views.length
+        ? '<p class="rn-muted">Home Assistant non ha restituito un elenco di viste consultabili. Puoi inserire il percorso manualmente.</p>'
+        : currentPath && !known
+          ? '<p class="rn-muted">Il percorso salvato non è tra le viste rilevate. Verifica che la pagina esista e sia accessibile.</p>'
+          : '';
       return this._field('Pagina di destinazione',
-        `${picker}<input class="rn-input rn-manual-path" type="text" ${attr}="${escapeHtml(id)}"
-          value="${escapeHtml(current || '')}" maxlength="255" placeholder="/dashboard-hub/nome-vista"/>`,
-        'Seleziona una pagina di Home Assistant oppure inserisci il percorso. La pagina deve già esistere.');
+        `<input class="rn-input rn-view-search" type="search" data-view-search="${escapeHtml(key)}"
+          placeholder="Cerca una dashboard o una vista di Home Assistant" autocomplete="off"
+          aria-label="Cerca pagina per ${escapeHtml(id)}"/>
+        <div class="rn-view-results" data-view-results="${escapeHtml(key)}"></div>
+        ${status}
+        <div class="rn-label rn-manual-label">Percorso salvato (modificabile)</div>
+        <input class="rn-input rn-manual-path" type="text" ${attr}="${escapeHtml(id)}"
+          value="${escapeHtml(current || '')}" maxlength="255" placeholder="/dashboard-hub/nome-vista"/>
+        ${currentPath ? `<p class="rn-note">Destinazione: ${escapeHtml(currentPath)}</p>` : ''}`,
+        'Scegli una vista rilevata in Home Assistant oppure inserisci un percorso locale. Le pagine devono già esistere.');
     }
     _areasTab() {
       const cfg = this._config;
@@ -487,36 +537,9 @@
         });
         areaSlot.appendChild(selector);
       }
-      root.querySelectorAll('[data-view-slot]').forEach((slot) => {
-        const [kind, id] = slot.dataset.viewSlot.split(':');
-        const current = kind === 'area' ? this._config.area_paths[id] || ''
-          : this._config.links.find((item) => item.id === id)?.path || '';
-        const choices = this._views.slice();
-        if (current && !choices.some((item) => item.value === current)) {
-          choices.unshift({ value: current, label: `Percorso configurato — ${current}` });
-        }
-        const change = (value) => {
-          const validated = path(value);
-          if (kind === 'area') this._update({ area_paths: { ...this._config.area_paths, [id]: validated } });
-          else this._modifyLink(id, { path: validated });
-        };
-        if (native) {
-          const selector = document.createElement('ha-selector');
-          selector.hass = this._hass;
-          selector.selector = { select: { options: choices, mode: 'dropdown', custom_value: true } };
-          selector.value = current;
-          selector.setAttribute('aria-label', `Seleziona pagina per ${id}`);
-          selector.addEventListener('value-changed', (event) => {
-            event.stopPropagation();
-            if (event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'value')) change(event.detail.value);
-          });
-          slot.appendChild(selector);
-        } else {
-          slot.innerHTML = `<select class="rn-input" data-view-choice="${escapeHtml(kind)}:${escapeHtml(id)}">
-            <option value="">Seleziona una pagina di Home Assistant</option>
-            ${choices.map((choice) => `<option value="${escapeHtml(choice.value)}" ${choice.value === current ? 'selected' : ''}>${escapeHtml(choice.label)}</option>`).join('')}
-          </select>`;
-        }
+      root.querySelectorAll('[data-view-results]').forEach((results) => {
+        const key = results.dataset.viewResults;
+        this._renderViewResults(key, '');
       });
       if (!native) return;
       root.querySelectorAll('[data-icon-slot]').forEach((slot) => {
@@ -536,12 +559,40 @@
         slot.appendChild(selector);
       });
     }
+    _renderViewResults(key, query) {
+      const results = [...this.shadowRoot.querySelectorAll('[data-view-results]')]
+        .find((el) => el.dataset.viewResults === key);
+      if (!results) return;
+      const [kind, id] = key.split(':');
+      const current = kind === 'area' ? this._config.area_paths[id] || ''
+        : this._config.links.find((link) => link.id === id)?.path || '';
+      const term = String(query || '').trim().toLocaleLowerCase('it');
+      const matches = this._views.filter((item) =>
+        !term || `${item.label} ${item.value}`.toLocaleLowerCase('it').includes(term)).slice(0, 20);
+      results.innerHTML = matches.length ? matches.map((item) =>
+        `<button type="button" class="rn-view-option ${current === item.value ? 'is-selected' : ''}"
+          data-pick-view="${escapeHtml(key)}" data-pick-path="${escapeHtml(item.value)}">
+          <span>${escapeHtml(item.label)}<small>${escapeHtml(item.value)}</small></span></button>`).join('')
+        : `<div class="rn-view-empty">${this._views.length ? 'Nessuna vista trovata per questa ricerca.' : 'Nessuna vista disponibile automaticamente.'}</div>`;
+    }
+    _input(event) {
+      const field = event.target.closest('[data-view-search]');
+      if (field) this._renderViewResults(field.dataset.viewSearch, field.value);
+    }
     _modifyLink(id, patch) {
       this._update({ links: this._config.links.map((entry) => entry.id === id ? { ...entry, ...patch } : entry) });
     }
     _click(e) {
       const t = e.target.closest('button');
       if (!t) return;
+      if (t.dataset.pickView) {
+        const [kind, id] = t.dataset.pickView.split(':');
+        const destination = path(t.dataset.pickPath);
+        if (!destination) return;
+        if (kind === 'area') this._update({ area_paths: { ...this._config.area_paths, [id]: destination } });
+        else if (kind === 'link') this._modifyLink(id, { path: destination });
+        return;
+      }
       if (t.dataset.tab) { this._tab = t.dataset.tab; this._render(); return; }
       if (t.dataset.section) { this._section = t.dataset.section; this._render(); return; }
       if (t.hasAttribute('data-add-link')) {
@@ -594,10 +645,19 @@
         else if (kind === 'link') this._modifyLink(id, { path: path(t.value) });
         return;
       }
-      if (t.dataset.areaPath) {
-        this._update({ area_paths: { ...this._config.area_paths, [t.dataset.areaPath]: path(t.value) } }); return;
+      if (t.dataset.areaPath || t.dataset.linkPath) {
+        const entered = t.value.trim();
+        const validated = path(entered);
+        if (entered && !validated) {
+          t.setCustomValidity('Inserisci un percorso interno che inizi con / oppure un URL dello stesso Home Assistant.');
+          t.reportValidity();
+          return; // Never erase a previously valid destination after a bad paste.
+        }
+        t.setCustomValidity('');
+        if (t.dataset.areaPath) this._update({ area_paths: { ...this._config.area_paths, [t.dataset.areaPath]: validated } });
+        else this._modifyLink(t.dataset.linkPath, { path: validated });
+        return;
       }
-      if (t.dataset.linkPath) { this._modifyLink(t.dataset.linkPath, { path: path(t.value) }); return; }
       if (t.dataset.linkName) { this._modifyLink(t.dataset.linkName, { name: string(t.value, 60) }); return; }
       if (t.dataset.linkIcon) { this._modifyLink(t.dataset.linkIcon, { icon: icon(t.value) }); return; }
       if (t.hasAttribute('data-fallback-area')) {
