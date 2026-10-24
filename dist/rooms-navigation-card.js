@@ -24,6 +24,7 @@
     theme_mode: 'auto',
     show_all_areas: true,
     area_ids: [],
+    hidden_area_ids: [],
     area_order: [],
     area_paths: {},
     links: DEFAULT_LINKS,
@@ -78,6 +79,7 @@
       theme_mode: ['auto', 'light', 'dark'].includes(r.theme_mode) ? r.theme_mode : 'auto',
       show_all_areas: r.show_all_areas !== false,
       area_ids: uniqueIds(r.area_ids),
+      hidden_area_ids: uniqueIds(r.hidden_area_ids),
       area_order: uniqueIds(r.area_order),
       area_paths: paths,
       links,
@@ -91,9 +93,11 @@
       .filter((r) => r.name && /^[a-z0-9_]+$/.test(r.area_id) && !ids.has(r.area_id) && ids.add(r.area_id));
   }
   function visibleAreas(allAreas, cfg) {
-    const filtered = cfg.show_all_areas
+    const excluded = new Set(cfg.hidden_area_ids || []);
+    const filtered = (cfg.show_all_areas
       ? allAreas
-      : allAreas.filter((item) => cfg.area_ids.includes(item.area_id));
+      : allAreas.filter((item) => cfg.area_ids.includes(item.area_id)))
+      .filter((item) => !excluded.has(item.area_id));
     const positions = new Map(cfg.area_order.map((id, position) => [id, position]));
     return filtered.map((entry, index) => ({ ...entry, originalIndex: index }))
       .sort((a, b) => (positions.get(a.area_id) ?? (cfg.area_order.length + a.originalIndex))
@@ -102,6 +106,39 @@
   async function fetchAreas(hass) {
     if (!hass || typeof hass.callWS !== 'function') throw new Error('API Home Assistant non disponibile.');
     return normalizeAreas(await hass.callWS({ type: 'config/area_registry/list' }));
+  }
+  // Read-only Home Assistant dashboard registry and stored view definitions.
+  // There is no documented built-in view picker selector: we supply real views
+  // to Home Assistant's supported select selector when it is available.
+  async function fetchViews(hass) {
+    if (!hass || typeof hass.callWS !== 'function') return [];
+    let dashboards = [];
+    try {
+      const result = await hass.callWS({ type: 'lovelace/dashboards/list' });
+      if (Array.isArray(result)) dashboards = result;
+    } catch (_) { /* The default dashboard may still be accessible. */ }
+    const targets = [{ slug: null, name: 'Dashboard principale' }];
+    for (const dashboard of dashboards.slice(0, 30)) {
+      const slug = string(dashboard?.url_path, 90);
+      if (slug && /^[a-z0-9_-]+$/.test(slug) && slug !== 'lovelace') {
+        targets.push({ slug, name: string(dashboard.title, 90) || slug });
+      }
+    }
+    const responses = await Promise.allSettled(targets.map((target) =>
+      hass.callWS({ type: 'lovelace/config', url_path: target.slug, force: false })));
+    const choices = new Map();
+    responses.forEach((outcome, dashboardIndex) => {
+      if (outcome.status !== 'fulfilled' || !Array.isArray(outcome.value?.views)) return;
+      const target = targets[dashboardIndex];
+      outcome.value.views.slice(0, 120).forEach((view, viewIndex) => {
+        const segment = typeof view?.path === 'string' && view.path ? view.path : String(viewIndex);
+        const destination = path(`/${target.slug || 'lovelace'}/${segment}`);
+        if (!destination) return;
+        const title = string(view?.title, 85) || `Vista ${viewIndex + 1}`;
+        choices.set(destination, { value: destination, label: `${target.name} — ${title}` });
+      });
+    });
+    return [...choices.values()].sort((a, b) => a.label.localeCompare(b.label, 'it'));
   }
   function markupIcon(name, cls = '') {
     return `<ha-icon class="${cls}" icon="${escapeHtml(icon(name))}" aria-hidden="true"></ha-icon>`;
@@ -264,6 +301,8 @@
       this._hass = null;
       this._areas = [];
       this._areaError = '';
+      this._views = [];
+      this._viewFetchSeq = 0;
       this._tab = 'stanze';
       this._section = 'aree';
       this._fetchSeq = 0;
@@ -278,11 +317,12 @@
       const oldConn = this._hass?.connection;
       this._hass = value;
       this.shadowRoot.querySelectorAll('ha-selector').forEach((node) => { node.hass = value; });
-      if (this.isConnected && oldConn !== value?.connection) { this._loadAreas(); this._subscribe(); }
+      if (this.isConnected && oldConn !== value?.connection) { this._loadAreas(); this._loadViews(); this._subscribe(); }
     }
-    connectedCallback() { this._render(); this._ensureNative(); this._loadAreas(); this._subscribe(); }
+    connectedCallback() { this._render(); this._ensureNative(); this._loadAreas(); this._loadViews(); this._subscribe(); }
     disconnectedCallback() {
       this._fetchSeq++;
+      this._viewFetchSeq++;
       this._unsubPromise?.then((unsubscribe) => unsubscribe?.()).catch(() => {});
       this._unsubPromise = null;
     }
@@ -307,6 +347,19 @@
         if (seq !== this._fetchSeq || !this.isConnected) return;
         this._areaError = 'Impossibile leggere le Aree. Controlla l’accesso a Home Assistant.';
         console.warn(`[${EDITOR_TAG}] Area registry:`, error);
+      }
+      this._render();
+    }
+    async _loadViews() {
+      if (!this.isConnected || !this._hass) return;
+      const seq = ++this._viewFetchSeq;
+      try {
+        const options = await fetchViews(this._hass);
+        if (seq !== this._viewFetchSeq || !this.isConnected) return;
+        this._views = options;
+      } catch (_) {
+        if (seq !== this._viewFetchSeq || !this.isConnected) return;
+        this._views = [];
       }
       this._render();
     }
@@ -338,27 +391,41 @@
       return `<div class="rn-row"><label for="rn-${field}">${escapeHtml(label)}${desc ? `<div class="rn-muted">${escapeHtml(desc)}</div>` : ''}</label>
         <input id="rn-${field}" data-toggle="${field}" type="checkbox" ${value ? 'checked' : ''}/></div>`;
     }
+    _destinationField(kind, id, current) {
+      const attr = kind === 'area' ? 'data-area-path' : 'data-link-path';
+      const picker = this._views.length
+        ? `<div data-view-slot="${kind}:${escapeHtml(id)}"></div>`
+        : '<p class="rn-muted">Elenco viste non disponibile: puoi inserire il percorso manualmente.</p>';
+      return this._field('Pagina di destinazione',
+        `${picker}<input class="rn-input rn-manual-path" type="text" ${attr}="${escapeHtml(id)}"
+          value="${escapeHtml(current || '')}" maxlength="255" placeholder="/dashboard-hub/nome-vista"/>`,
+        'Seleziona una pagina di Home Assistant oppure inserisci il percorso. La pagina deve già esistere.');
+    }
     _areasTab() {
       const cfg = this._config;
       const selected = visibleAreas(this._areas, cfg);
+      const all = visibleAreas(this._areas, { ...cfg, show_all_areas: true, hidden_area_ids: [] });
       let html = `<h3 class="rn-heading">Configurazione stanze</h3><p class="rn-desc">Utilizza le Aree già presenti in Home Assistant. Nomi e icone MDI sono quelli assegnati alle Aree.</p>
         <div class="rn-subtabs"><button class="rn-subtab ${this._section === 'aree' ? 'active' : ''}" data-section="aree">Aree</button>
           <button class="rn-subtab ${this._section === 'links' ? 'active' : ''}" data-section="links">Collegamenti</button></div>`;
       if (this._section === 'aree') {
         html += `<h3 class="rn-heading">Aree Home Assistant</h3>
-          ${this._toggle('Mostra tutte le Aree', 'show_all_areas', cfg.show_all_areas, 'Attivo di default. Disattivalo per scegliere soltanto alcune Aree.')}`;
+          ${this._toggle('Mostra tutte le Aree', 'show_all_areas', cfg.show_all_areas, 'Attivo di default. Puoi anche nascondere singolarmente le Aree qui sotto.')}`;
         if (!cfg.show_all_areas) {
           html += this._field('Seleziona Aree', `<div data-selector="areas"></div><div class="rn-selector-fallback"><select class="rn-input" data-fallback-area multiple>
             ${this._areas.map((a) => `<option value="${escapeHtml(a.area_id)}" ${cfg.area_ids.includes(a.area_id) ? 'selected' : ''}>${escapeHtml(a.name)}</option>`).join('')}</select></div>`);
         }
         if (this._areaError) html += `<p class="rn-muted">${escapeHtml(this._areaError)}</p>`;
-        if (!selected.length) html += '<p class="rn-desc">Nessuna Area disponibile o selezionata.</p>';
-        selected.forEach((r, i) => {
-          html += `<details class="rn-item" data-area-item="${escapeHtml(r.area_id)}"><summary>${markupIcon(r.icon)}<span>${escapeHtml(r.name)}</span><small>${i + 1} / ${selected.length}</small></summary>
+        if (!all.length) html += '<p class="rn-desc">Nessuna Area disponibile.</p>';
+        all.forEach((r, i) => {
+          const visible = cfg.show_all_areas || cfg.area_ids.includes(r.area_id);
+          const enabled = visible && !cfg.hidden_area_ids.includes(r.area_id);
+          html += `<details class="rn-item" data-area-item="${escapeHtml(r.area_id)}"><summary>${markupIcon(r.icon)}<span>${escapeHtml(r.name)}</span><small>${enabled ? 'Visibile' : 'Nascosta'}</small></summary>
               <div class="rn-content"><p class="rn-muted">Nome e icona provengono dal registro Aree di Home Assistant.</p>
-              ${this._field('Pagina di destinazione', `<input class="rn-input" data-area-path="${escapeHtml(r.area_id)}" value="${escapeHtml(cfg.area_paths[r.area_id] || '')}" placeholder="/dashboard-hub/nome-vista" maxlength="255"/>`, 'Usa il percorso reale di una vista o Subview. La card non crea automaticamente le pagine.')}
+              ${this._toggle('Mostra questa Area', `area-visible-${r.area_id}`, enabled, 'La nasconde solo in questa card, senza eliminarla da Home Assistant.')}
+              ${this._destinationField('area', r.area_id, cfg.area_paths[r.area_id])}
               <div class="rn-actions"><button class="rn-button" data-area-move="up" data-id="${escapeHtml(r.area_id)}" ${i === 0 ? 'disabled' : ''}>↑ Sposta su</button>
-              <button class="rn-button" data-area-move="down" data-id="${escapeHtml(r.area_id)}" ${i === selected.length - 1 ? 'disabled' : ''}>↓ Sposta giù</button></div></div></details>`;
+              <button class="rn-button" data-area-move="down" data-id="${escapeHtml(r.area_id)}" ${i === all.length - 1 ? 'disabled' : ''}>↓ Sposta giù</button></div></div></details>`;
         });
         html += '<p class="rn-note">Su tablet: 3 elementi per riga, senza centrare l’ultima riga.</p>';
       } else {
@@ -367,7 +434,7 @@
           html += `<details class="rn-item" data-link-item="${escapeHtml(item.id)}"><summary>${markupIcon(item.icon)}<span>${escapeHtml(item.name)}</span><small>${i + 1} / ${cfg.links.length}</small></summary>
             <div class="rn-content">${this._field('Nome', `<input class="rn-input" data-link-name="${escapeHtml(item.id)}" value="${escapeHtml(item.name)}" maxlength="60"/>`)}
             ${this._field('Icona Home Assistant', `<div data-icon-slot="${escapeHtml(item.id)}"></div><div class="rn-selector-fallback"><input class="rn-input" data-link-icon="${escapeHtml(item.id)}" value="${escapeHtml(item.icon)}" placeholder="mdi:home-outline"/></div>`)}
-            ${this._field('Pagina di destinazione', `<input class="rn-input" data-link-path="${escapeHtml(item.id)}" value="${escapeHtml(item.path)}" maxlength="255" placeholder="/dashboard-hub/nome-vista"/>`)}
+            ${this._destinationField('link', item.id, item.path)}
             ${this._toggle('Mostra collegamento', `link-show-${item.id}`, item.show)}
             <div class="rn-actions"><button class="rn-button" data-link-move="up" data-id="${escapeHtml(item.id)}" ${i === 0 ? 'disabled' : ''}>↑ Sposta su</button>
             <button class="rn-button" data-link-move="down" data-id="${escapeHtml(item.id)}" ${i === cfg.links.length - 1 ? 'disabled' : ''}>↓ Sposta giù</button>
@@ -405,9 +472,9 @@
     _attachNativeSelectors() {
       const native = !!customElements.get('ha-selector');
       const root = this.shadowRoot.querySelector('.rn-editor');
-      if (!native) { root.classList.add('rn-no-native'); return; }
+      if (!native) root.classList.add('rn-no-native');
       const areaSlot = root.querySelector('[data-selector="areas"]');
-      if (areaSlot) {
+      if (areaSlot && native) {
         const selector = document.createElement('ha-selector');
         selector.hass = this._hass;
         selector.selector = { area: { multiple: true } };
@@ -420,6 +487,38 @@
         });
         areaSlot.appendChild(selector);
       }
+      root.querySelectorAll('[data-view-slot]').forEach((slot) => {
+        const [kind, id] = slot.dataset.viewSlot.split(':');
+        const current = kind === 'area' ? this._config.area_paths[id] || ''
+          : this._config.links.find((item) => item.id === id)?.path || '';
+        const choices = this._views.slice();
+        if (current && !choices.some((item) => item.value === current)) {
+          choices.unshift({ value: current, label: `Percorso configurato — ${current}` });
+        }
+        const change = (value) => {
+          const validated = path(value);
+          if (kind === 'area') this._update({ area_paths: { ...this._config.area_paths, [id]: validated } });
+          else this._modifyLink(id, { path: validated });
+        };
+        if (native) {
+          const selector = document.createElement('ha-selector');
+          selector.hass = this._hass;
+          selector.selector = { select: { options: choices, mode: 'dropdown', custom_value: true } };
+          selector.value = current;
+          selector.setAttribute('aria-label', `Seleziona pagina per ${id}`);
+          selector.addEventListener('value-changed', (event) => {
+            event.stopPropagation();
+            if (event.detail && Object.prototype.hasOwnProperty.call(event.detail, 'value')) change(event.detail.value);
+          });
+          slot.appendChild(selector);
+        } else {
+          slot.innerHTML = `<select class="rn-input" data-view-choice="${escapeHtml(kind)}:${escapeHtml(id)}">
+            <option value="">Seleziona una pagina di Home Assistant</option>
+            ${choices.map((choice) => `<option value="${escapeHtml(choice.value)}" ${choice.value === current ? 'selected' : ''}>${escapeHtml(choice.label)}</option>`).join('')}
+          </select>`;
+        }
+      });
+      if (!native) return;
       root.querySelectorAll('[data-icon-slot]').forEach((slot) => {
         const id = slot.getAttribute('data-icon-slot');
         const current = this._config.links.find((entry) => entry.id === id);
@@ -464,7 +563,7 @@
         return;
       }
       if (t.dataset.areaMove) {
-        const ids = visibleAreas(this._areas, this._config).map((item) => item.area_id);
+        const ids = visibleAreas(this._areas, { ...this._config, show_all_areas: true, hidden_area_ids: [] }).map((item) => item.area_id);
         const i = ids.indexOf(t.dataset.id);
         const j = i + (t.dataset.areaMove === 'up' ? -1 : 1);
         if (i >= 0 && j >= 0 && j < ids.length) {
@@ -479,8 +578,20 @@
       if (t.dataset.field) { this._update({ [t.dataset.field]: t.value }); return; }
       if (t.dataset.toggle) {
         const key = t.dataset.toggle;
-        if (key.startsWith('link-show-')) this._modifyLink(key.slice(10), { show: t.checked });
+        if (key.startsWith('area-visible-')) {
+          const id = key.slice('area-visible-'.length);
+          const hidden = this._config.hidden_area_ids.filter((entry) => entry !== id);
+          const areaIds = t.checked && !this._config.show_all_areas
+            ? [...new Set([...this._config.area_ids, id])] : this._config.area_ids;
+          this._update({ hidden_area_ids: t.checked ? hidden : [...hidden, id], area_ids: areaIds });
+        } else if (key.startsWith('link-show-')) this._modifyLink(key.slice(10), { show: t.checked });
         else this._update({ [key]: t.checked });
+        return;
+      }
+      if (t.dataset.viewChoice) {
+        const [kind, id] = t.dataset.viewChoice.split(':');
+        if (kind === 'area') this._update({ area_paths: { ...this._config.area_paths, [id]: path(t.value) } });
+        else if (kind === 'link') this._modifyLink(id, { path: path(t.value) });
         return;
       }
       if (t.dataset.areaPath) {
@@ -502,7 +613,7 @@
       type: CARD_TAG,
       name: 'Rooms Navigation Card',
       description: 'A modern room navigation card for Home Assistant with native areas, optional shortcuts, and Edera design.',
-      preview: false,
+      preview: true,
     });
   }
 })();
