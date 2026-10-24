@@ -1,4 +1,5 @@
 {
   "name": "Rooms Navigation Card",
-  "filename": "rooms-navigation-card.js"
+  "filename": "rooms-navigation-card.js",
+  "render_readme": true
 }
