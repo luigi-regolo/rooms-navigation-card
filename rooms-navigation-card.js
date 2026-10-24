@@ -10,6 +10,10 @@
   const CARD_TAG = 'rooms-navigation-card';
   const EDITOR_TAG = 'rooms-navigation-card-editor';
   const CARD_TYPE = `custom:${CARD_TAG}`;
+  // A one-time scroll fallback for returning from a room to the same dashboard view.
+  // Home Assistant's built-in history scroll restoration always takes precedence.
+  let pendingRoomReturn = null;
+  const dashboardPath = () => `${window.location.pathname}${window.location.search}`;
   const DEFAULT_LINKS = [
     { id: 'information', name: 'Informazioni', icon: 'mdi:information-outline', path: '', show: true },
     { id: 'climate', name: 'Clima', icon: 'mdi:thermometer', path: '', show: true },
@@ -173,13 +177,12 @@
     .rn-room{appearance:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0;min-height:124px;padding:15px 15px 14px;border:1px solid transparent;border-radius:16px;background:var(--rn-tile);color:var(--rn-fg);text-decoration:none;text-align:left;transition:background .15s,transform .15s,border-color .15s}
     .rn-room[href]:hover{background:var(--rn-hover)}
     .rn-room[href]:active{transform:translateY(1px);border-color:var(--rn-accent)}
-    .rn-room.rn-selected{border-color:var(--rn-accent)}
     .rn-room:not([href]){cursor:default;opacity:.67}
     .rn-room-icon{display:grid;place-items:center;width:47px;height:47px;border-radius:13px;background:var(--rn-circle);color:var(--rn-muted)}
     .rn-room-icon ha-icon{--mdc-icon-size:29px;width:29px;height:29px}
     .rn-room-name{font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere;max-width:100%}
     .rn-links{border-top:1px solid var(--rn-line);margin-top:17px;padding-top:15px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
-    .rn-chip{display:flex;align-items:center;gap:8px;min-height:35px;padding:9px 13px;border:0;border-radius:12px;background:var(--rn-accent);color:#fff;text-decoration:none;font-size:12px;font-weight:500;white-space:nowrap}
+    .rn-chip{display:flex;align-items:center;gap:8px;min-height:35px;padding:9px 13px;border:0;border-radius:12px;background:var(--rn-accent);color:#fff;text-decoration:none;font-size:12px;font-weight:500;white-space:nowrap;box-shadow:inset 0 0 0 1px rgba(255,255,255,.60)}
     .rn-chip[href]:hover{background:var(--rn-accent)}.rn-chip:not([href]){opacity:.67;cursor:default}
     .rn-chip ha-icon{--mdc-icon-size:17px;width:17px;height:17px;color:#fff}
     .rn-empty{font-size:13px;line-height:1.5;color:var(--rn-muted);padding:15px 4px}
@@ -208,13 +211,17 @@
       this._fetchSeq = 0;
       this._unsubPromise = null;
       this._darkMode = null;
-      this._selectedArea = null;
       this.shadowRoot.addEventListener('click', (event) => {
         const room = event.target.closest('a.rn-room[href]');
-        if (!room || !room.dataset.areaId) return;
-        this._selectedArea = room.dataset.areaId;
-        this.shadowRoot.querySelectorAll('a.rn-room').forEach((tile) =>
-          tile.classList.toggle('rn-selected', tile.dataset.areaId === this._selectedArea));
+        // Do not interfere with modified clicks, new tabs or Home Assistant's router.
+        if (!room || event.defaultPrevented || event.button !== 0 || event.ctrlKey ||
+            event.metaKey || event.shiftKey || event.altKey) return;
+        const y = Math.max(0, window.scrollY || 0);
+        if (y < 8) { pendingRoomReturn = null; return; }
+        const destination = new URL(room.href, window.location.href);
+        if (destination.origin !== window.location.origin ||
+            `${destination.pathname}${destination.search}` === dashboardPath()) return;
+        pendingRoomReturn = { source: dashboardPath(), y, at: Date.now() };
       });
     }
     static getConfigElement() { return document.createElement(EDITOR_TAG); }
@@ -230,7 +237,30 @@
         if (oldConnection !== value?.connection) this._subscribe();
       }
     }
-    connectedCallback() { this._loadAreas(); this._subscribe(); this._render(); }
+    connectedCallback() {
+      this._loadAreas(); this._subscribe(); this._render();
+      this._restoreScrollOnReturn();
+    }
+    _restoreScrollOnReturn() {
+      const saved = pendingRoomReturn;
+      if (!saved) return;
+      if (saved.source !== dashboardPath()) {
+        if (Date.now() - saved.at > 3 * 60 * 1000) pendingRoomReturn = null;
+        return;
+      }
+      pendingRoomReturn = null; // One return only, including if native restoration succeeds.
+      if (Date.now() - saved.at > 3 * 60 * 1000 || saved.y < 8) return;
+      // HA restores history scroll on popstate. Act only if the viewport stayed at the top.
+      const restoreIfNeeded = () => {
+        if (!this.isConnected || dashboardPath() !== saved.source) return;
+        if (window.scrollY < 8) window.scrollTo({ top: saved.y, behavior: 'auto' });
+      };
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        restoreIfNeeded();
+        // One bounded retry for dashboard sections mounting after the view itself.
+        setTimeout(restoreIfNeeded, 160);
+      }));
+    }
     disconnectedCallback() {
       this._fetchSeq++;
       if (this._unsubPromise) this._unsubPromise.then((unsubscribe) => unsubscribe?.()).catch(() => {});
@@ -274,7 +304,7 @@
       const tiles = rooms.map((r) => {
         const dest = path(cfg.area_paths[r.area_id]);
         const label = escapeHtml(r.name);
-        return `<a class="rn-room ${dest && r.area_id === this._selectedArea ? 'rn-selected' : ''}" data-area-id="${escapeHtml(r.area_id)}" ${dest ? `href="${escapeHtml(dest)}"` : `aria-disabled="true" title="Configura una pagina per ${label}"`}
+        return `<a class="rn-room" data-area-id="${escapeHtml(r.area_id)}" ${dest ? `href="${escapeHtml(dest)}"` : `aria-disabled="true" title="Configura una pagina per ${label}"`}
           ${dest ? `aria-label="Apri ${label}"` : `aria-label="${label}: destinazione non configurata"`}>
           <span class="rn-room-icon">${markupIcon(r.icon)}</span><span class="rn-room-name">${label}</span></a>`;
       }).join('');
