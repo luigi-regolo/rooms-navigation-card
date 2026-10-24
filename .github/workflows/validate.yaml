@@ -1,0 +1,24 @@
+name: HACS validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-hacs:
+    name: Validate HACS Dashboard card
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository (read-only)
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Validate with HACS Action
+        uses: hacs/action@1ebf01c408f29afcb6406bd431bc98fd8cbb15aa # official action main, verified 2026-10-24
+        with:
+          category: plugin
+          comment: "false"
