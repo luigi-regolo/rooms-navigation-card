@@ -182,9 +182,9 @@
     .rn-room-icon ha-icon{--mdc-icon-size:29px;width:29px;height:29px}
     .rn-room-name{font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere;max-width:100%}
     .rn-links{border-top:0;margin-top:17px;padding-top:15px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
-    .rn-chip{display:inline-flex;align-items:center;justify-content:center;vertical-align:top;gap:5px;padding:5px 9px;border:0;border-radius:999px;background:var(--rn-accent);color:#fff;text-decoration:none;font-family:var(--ha-font-family-body,Roboto,Arial,sans-serif);font-size:11px;font-weight:650;line-height:1.2;cursor:pointer;white-space:nowrap}
-    .rn-chip[href]:hover{background:var(--rn-accent)}.rn-chip:not([href]){opacity:.67;cursor:default}
-    .rn-chip ha-icon{display:block;flex:none;margin:0;--mdc-icon-size:14px;width:14px;height:14px;color:inherit}
+    .rn-chip{border:1px solid var(--rn-line);background:var(--rn-tile);color:var(--rn-fg);border-radius:14px;padding:9px 11px;min-height:40px;display:inline-flex;align-items:center;gap:8px;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif));font-size:12px;font-weight:600;max-width:100%;white-space:normal;text-align:left;text-decoration:none;cursor:pointer}
+    .rn-chip[href]:hover{background:var(--rn-tile)}.rn-chip:not([href]){opacity:.67;cursor:default}
+    .rn-chip ha-icon{--mdc-icon-size:18px;flex:none;color:#0b9b77}
     .rn-empty{font-size:13px;line-height:1.5;color:var(--rn-muted);padding:15px 4px}
     a:focus-visible{outline:2px solid var(--rn-accent);outline-offset:2px}
     @container (min-width:760px){.rn-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
