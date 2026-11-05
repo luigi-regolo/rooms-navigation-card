@@ -1,8 +1,8 @@
 # Rooms Navigation Card
 
-[![TikTok | Segui](assets/tiktok-segui.svg)](https://www.tiktok.com/@luigi.regolo)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5?style=flat-square)](https://my.home-assistant.io/redirect/hacs_repository/?owner=luigi-regolo&repository=rooms-navigation-card&category=plugin)
+[![Release](https://img.shields.io/github/v/release/luigi-regolo/rooms-navigation-card?label=Release&style=flat-square)](https://github.com/luigi-regolo/rooms-navigation-card/releases/latest)
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue?style=flat-square)](LICENSE)
-[![HACS](https://img.shields.io/badge/HACS-Repository-41BDF5?style=flat-square)](https://my.home-assistant.io/redirect/hacs_repository/?owner=luigi-regolo&repository=rooms-navigation-card&category=plugin)
 [![GitHub Stars](https://img.shields.io/github/stars/luigi-regolo/rooms-navigation-card?style=flat-square)](https://github.com/luigi-regolo/rooms-navigation-card/stargazers)
 
 ## Overview
@@ -15,9 +15,13 @@ The card does not create, delete, or modify Home Assistant Areas or dashboard vi
 
 ## Preview
 
-![Rooms Navigation Card — Edera Dark dashboard preview](assets/rooms-navigation-card-preview.png)
+| Light | Dark |
+| --- | --- |
+| ![Rooms Navigation Card in Light mode](assets/rooms-navigation-card-light.png) | ![Rooms Navigation Card in Dark mode](assets/rooms-navigation-card-dark.png) |
 
-*Rooms Navigation Card running in a Home Assistant dashboard with Edera Dark styling. The rooms and shortcut labels shown are examples from the configured dashboard.*
+![Rooms Navigation Card on a smartphone-width layout, Dark mode](assets/rooms-navigation-card-mobile-dark.png)
+
+*Previews use fictional demo data. The interface text is currently in Italian.*
 
 ## Features
 
@@ -34,18 +38,29 @@ Available dashboard destinations depend on the views accessible in your Home Ass
 
 ## Installation
 
-### HACS — Custom repository
+### HACS (Recommended)
 
-1. Open **HACS** in Home Assistant.
-2. Open the HACS menu and choose **Custom repositories**.
-3. Enter `https://github.com/luigi-regolo/rooms-navigation-card`.
-4. Select **Dashboard** as the repository type and add it.
-5. Download **Rooms Navigation Card** from HACS.
-6. Reload the Home Assistant dashboard if needed, then add **Rooms Navigation Card** using the card picker.
+Install Rooms Navigation Card directly from the default HACS catalog.
 
 [![Open Rooms Navigation Card in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=luigi-regolo&repository=rooms-navigation-card&category=plugin)
 
-HACS installs the JavaScript module from `dist/rooms-navigation-card.js`.
+1. Open **HACS** in Home Assistant.
+2. Search for **Rooms Navigation Card**.
+3. Select **Rooms Navigation Card** from the results.
+4. Click **Download** to install the card.
+5. Reload your dashboard if necessary.
+6. Add **Rooms Navigation Card** to your dashboard and configure it using the visual editor.
+
+To install a specific release, use **Download** or **Redownload** and select the desired version when available.
+
+### Alternative: Custom repository
+
+If you prefer to add the repository manually:
+
+1. Open **HACS** and select **Custom repositories** from the menu.
+2. Enter `https://github.com/luigi-regolo/rooms-navigation-card`.
+3. Select **Dashboard** as the repository type and add it.
+4. Find **Rooms Navigation Card** in HACS and download it.
 
 ### Manual installation
 
@@ -90,6 +105,10 @@ Use the visual editor to select rooms and assign destinations. A room without a 
 No specific minimum Home Assistant version has been independently verified for this project.
 
 Rooms Navigation Card does not require a separate cloud account, subscription, or third-party JavaScript library. It does not implement advertising, analytics, or external telemetry.
+
+## Releases
+
+See [GitHub Releases](https://github.com/luigi-regolo/rooms-navigation-card/releases) for published versions.
 
 ## Copyright & License
 
