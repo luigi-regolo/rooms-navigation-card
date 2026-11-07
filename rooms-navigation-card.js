@@ -167,33 +167,36 @@
     *,*:before,*:after{box-sizing:border-box}
     .rn-container{container-type:inline-size;width:100%;min-width:0;--rn-accent:#0a7156;--rn-bg:#fafbf9;--rn-tile:#f0f2ef;--rn-hover:#e5eee5;--rn-circle:#fff;--rn-line:#e0e5df;--rn-fg:#18221c;--rn-muted:#56675c}
     .rn-container.rn-dark{--rn-accent:#0e795d;--rn-bg:#101211;--rn-tile:#191c1a;--rn-hover:#242b26;--rn-circle:#282b29;--rn-line:#2b302c;--rn-fg:#f5f7f4;--rn-muted:#bbc5bd}
-    .rn-shell{width:100%;min-width:0;max-width:100%;background:var(--rn-bg);color:var(--rn-fg);border:1px solid var(--rn-line);border-radius:26px;padding:18px}
+    .rn-shell{width:100%;min-width:0;max-width:100%;background:var(--rn-bg);color:var(--rn-fg);border:1px solid var(--rn-line);border-radius:22px;padding:14px}
     .rn-shell.rn-borderless{background:transparent;border:0;border-radius:0;padding:0}
-    .rn-eyebrow{font-size:10px;letter-spacing:1.7px;font-weight:750;color:var(--rn-muted);margin:0 0 7px}
-    .rn-title{font-size:25px;line-height:1.14;font-weight:780;letter-spacing:-.7px;overflow-wrap:anywhere;margin:0}
+    .rn-eyebrow{font-size:10px;letter-spacing:1.7px;font-weight:750;color:var(--rn-muted);margin:0 0 4px}
+    .rn-title{font-size:21px;line-height:1.14;font-weight:780;letter-spacing:-.5px;overflow-wrap:anywhere;margin:0}
     .rn-title b{color:var(--rn-accent);font-weight:800}
-    .rn-heading{margin:2px 4px 17px}
-    .rn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-    .rn-room{appearance:none;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;gap:12px;min-width:0;min-height:124px;padding:15px 15px 14px;border:1px solid transparent;border-radius:16px;background:var(--rn-tile);color:var(--rn-fg);text-decoration:none;text-align:left;transition:background .15s,transform .15s,border-color .15s}
+    .rn-heading{margin:0 2px 12px}
+    .rn-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+    .rn-room{appearance:none;display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;min-width:0;min-height:60px;padding:10px 12px;border:1px solid var(--rn-line);border-radius:14px;background:var(--rn-tile);color:var(--rn-fg);text-decoration:none;text-align:left;transition:background .15s,transform .15s,border-color .15s}
     .rn-room[href]:hover{background:var(--rn-hover)}
     .rn-room[href]:active{transform:translateY(1px);border-color:var(--rn-accent)}
     .rn-room:not([href]){cursor:default;opacity:.67}
-    .rn-room-icon{display:grid;place-items:center;width:47px;height:47px;border-radius:13px;background:var(--rn-circle);color:var(--rn-muted)}
-    .rn-room-icon ha-icon{--mdc-icon-size:29px;width:29px;height:29px}
-    .rn-room-name{font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere;max-width:100%}
-    .rn-links{border-top:0;margin-top:17px;padding-top:15px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
-    .rn-chip{border:1px solid var(--rn-line);background:var(--rn-tile);color:var(--rn-fg);border-radius:14px;padding:9px 11px;min-height:40px;display:inline-flex;align-items:center;gap:8px;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif));font-size:12px;font-weight:600;max-width:100%;white-space:normal;text-align:left;text-decoration:none;cursor:pointer}
+    .rn-room-icon{flex:none;display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--rn-circle);color:var(--rn-muted)}
+    .rn-room[href] .rn-room-icon{background:color-mix(in srgb,#0b9b77 14%,var(--rn-circle));color:#0b9b77}
+    .rn-room-icon ha-icon{--mdc-icon-size:22px;width:22px;height:22px}
+    .rn-room-name{flex:1;min-width:0;font-weight:600;font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+    .rn-room-chev{display:none;flex:none;--mdc-icon-size:16px;width:16px;height:16px;color:var(--rn-muted)}
+    .rn-links{border-top:0;margin-top:12px;padding-top:0;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}
+    .rn-chip{border:1px solid var(--rn-line);background:var(--rn-tile);color:var(--rn-fg);border-radius:12px;padding:6px 11px;min-height:36px;display:inline-flex;align-items:center;gap:8px;font-family:var(--ha-font-family-body,var(--paper-font-body1_-_font-family,Roboto,Arial,sans-serif));font-size:12px;font-weight:600;max-width:100%;white-space:normal;text-align:left;text-decoration:none;cursor:pointer}
     .rn-chip[href]:hover{background:var(--rn-tile)}.rn-chip:not([href]){opacity:.67;cursor:default}
     .rn-chip ha-icon{--mdc-icon-size:18px;flex:none;color:#0b9b77}
     .rn-empty{font-size:13px;line-height:1.5;color:var(--rn-muted);padding:15px 4px}
     a:focus-visible{outline:2px solid var(--rn-accent);outline-offset:2px}
     @container (min-width:760px){.rn-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
-    @container (max-width:439px){.rn-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.rn-room{min-height:117px;padding:13px}.rn-room-icon{width:43px;height:43px;border-radius:12px}.rn-room-icon ha-icon{--mdc-icon-size:26px;width:26px;height:26px}.rn-room-name{font-size:12px}.rn-shell:not(.rn-borderless){padding:13px;border-radius:22px}.rn-title{font-size:23px}}
-    @container (max-width:300px){.rn-room{padding:10px;min-height:106px}.rn-room-name{font-size:11px}.rn-chip{flex:1;justify-content:center}}
-    /* Tablets keep three room columns even inside narrow Home Assistant layout columns. */
+    @container (max-width:519px){.rn-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @container (min-width:600px){.rn-room-chev{display:inline-flex}}
+    @container (max-width:439px){.rn-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.rn-room{min-height:56px;padding:9px 10px}.rn-room-icon{width:34px;height:34px;border-radius:10px}.rn-room-icon ha-icon{--mdc-icon-size:20px;width:20px;height:20px}.rn-shell:not(.rn-borderless){padding:12px;border-radius:20px}.rn-title{font-size:20px}.rn-chip{flex:1;justify-content:center}}
+    @container (max-width:300px){.rn-room{padding:8px;min-height:52px}.rn-room-name{font-size:11px}}
+    /* Tablets keep three room columns when the card is at least 520px wide; narrower layout columns use two. */
     @media (min-width:600px) and (max-width:1199px), (min-width:600px) and (any-pointer:coarse){
-      @container (min-width:0px){.rn-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-      @container (max-width:439px){.rn-room{min-height:106px;padding:10px}.rn-room-icon{width:39px;height:39px}.rn-room-icon ha-icon{--mdc-icon-size:25px;width:25px;height:25px}.rn-room-name{font-size:12px}}
+      @container (min-width:520px){.rn-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
     }
     @media(prefers-reduced-motion:reduce){.rn-room{transition:none}}
   `;
@@ -293,7 +296,7 @@
       this._unsubPromise = this._hass.connection.subscribeEvents(() => this._loadAreas(), 'area_registry_updated');
       this._unsubPromise.catch(() => {});
     }
-    getCardSize() { return Math.max(2, Math.ceil(visibleAreas(this._areas, this._config).length / 3) + 1); }
+    getCardSize() { return Math.ceil((88 + Math.ceil(visibleAreas(this._areas, this._config).length / 3) * 68 + 48) / 50); }
     _render() {
       if (!this.isConnected) return;
       const cfg = this._config;
@@ -306,7 +309,7 @@
         const label = escapeHtml(r.name);
         return `<a class="rn-room" data-area-id="${escapeHtml(r.area_id)}" ${dest ? `href="${escapeHtml(dest)}"` : `aria-disabled="true" title="Configura una pagina per ${label}"`}
           ${dest ? `aria-label="Apri ${label}"` : `aria-label="${label}: destinazione non configurata"`}>
-          <span class="rn-room-icon">${markupIcon(r.icon)}</span><span class="rn-room-name">${label}</span></a>`;
+          <span class="rn-room-icon">${markupIcon(r.icon)}</span><span class="rn-room-name">${label}</span>${dest ? markupIcon('mdi:chevron-right', 'rn-room-chev') : ''}</a>`;
       }).join('');
       const links = cfg.links.filter((r) => r.show).map((r) => {
         const dest = path(r.path);
