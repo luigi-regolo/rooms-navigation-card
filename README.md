@@ -1,6 +1,6 @@
 # Rooms Navigation Card
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5?style=flat-square)](https://my.home-assistant.io/redirect/hacs_repository/?owner=luigi-regolo&repository=rooms-navigation-card&category=plugin)
+[![Marketplace](https://img.shields.io/badge/Marketplace-41BDF5?style=flat-square)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=luigi-regolo&repository=rooms-navigation-card&category=plugin)
 [![Release](https://img.shields.io/github/v/release/luigi-regolo/rooms-navigation-card?label=Release&style=flat-square)](https://github.com/luigi-regolo/rooms-navigation-card/releases/latest)
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue?style=flat-square)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/luigi-regolo/rooms-navigation-card?style=flat-square)](https://github.com/luigi-regolo/rooms-navigation-card/stargazers)
@@ -38,29 +38,19 @@ Available dashboard destinations depend on the views accessible in your Home Ass
 
 ## Installation
 
-### HACS (Recommended)
+### Marketplace (Recommended)
 
-Install Rooms Navigation Card directly from the default HACS catalog.
+Install Rooms Navigation Card directly from the default Marketplace catalog in Home Assistant 2026.11 or newer.
 
-[![Open Rooms Navigation Card in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=luigi-regolo&repository=rooms-navigation-card&category=plugin)
+[![Open Rooms Navigation Card in the Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=luigi-regolo&repository=rooms-navigation-card&category=plugin)
 
-1. Open **HACS** in Home Assistant.
-2. Search for **Rooms Navigation Card**.
-3. Select **Rooms Navigation Card** from the results.
-4. Click **Download** to install the card.
-5. Reload your dashboard if necessary.
-6. Add **Rooms Navigation Card** to your dashboard and configure it using the visual editor.
-
-To install a specific release, use **Download** or **Redownload** and select the desired version when available.
-
-### Alternative: Custom repository
-
-If you prefer to add the repository manually:
-
-1. Open **HACS** and select **Custom repositories** from the menu.
-2. Enter `https://github.com/luigi-regolo/rooms-navigation-card`.
-3. Select **Dashboard** as the repository type and add it.
-4. Find **Rooms Navigation Card** in HACS and download it.
+1. Go to **Settings** > **Marketplace**.
+2. The first time, accept the notice about community content.
+3. Use **Search** to find **Rooms Navigation Card**.
+4. Open the repository page and select **Install**.
+5. Check the version in the dialog and select **Install** again to confirm.
+6. Reload your browser to load the new resource.
+7. Add **Rooms Navigation Card** to your dashboard and configure it using the visual editor.
 
 ### Manual installation
 
@@ -100,7 +90,6 @@ Use the visual editor to select rooms and assign destinations. A room without a 
 - Home Assistant with support for custom JavaScript dashboard cards.
 - Access to the Home Assistant Area registry for native room discovery.
 - Existing Home Assistant dashboard views for navigation.
-- HACS is optional when using manual installation.
 
 No specific minimum Home Assistant version has been independently verified for this project.
 
