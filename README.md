@@ -9,7 +9,7 @@
 
 **Rooms Navigation Card** is a custom navigation card for Home Assistant dashboards, featuring a minimalist interface inspired by the Edera Light and Dark visual styles.
 
-It displays existing Home Assistant Areas as room tiles and lets you connect them to existing dashboard views. Optional compact shortcuts provide additional navigation destinations beneath the room grid.
+It displays existing Home Assistant Areas as room tiles, each with an optional pill showing the Area's floor, and lets you connect them to existing dashboard views. Optional compact shortcuts provide additional navigation destinations beneath the room grid.
 
 The card does not create, delete, or modify Home Assistant Areas or dashboard views.
 
@@ -21,17 +21,19 @@ The card does not create, delete, or modify Home Assistant Areas or dashboard vi
 
 ![Rooms Navigation Card on a smartphone-width layout, Dark mode](assets/rooms-navigation-card-mobile-dark.png)
 
-*Previews use fictional demo data. The interface text is currently in Italian.*
+*Previews use fictional demo data. The card is available in Italian, English, German, and French.*
 
 ## Features
 
 - **Native Home Assistant Areas:** Automatically read room names and icons from the Home Assistant Area registry.
 - **Per-card room selection:** Show, hide, restore, and reorder rooms without changing the original Areas.
+- **Floor pills:** Each room can show its Home Assistant floor in a small pill. The text can be renamed per room or left empty to hide the pill.
 - **Dashboard navigation:** Link individual rooms to existing Home Assistant dashboard views. Select a discovered view or enter its internal path manually.
-- **Optional shortcuts:** Configure, rename, reorder, show, or remove shortcuts such as Information and Climate, with Material Design Icons.
-- **Visual editor:** Configure rooms and links under **Stanze**, and titles and visual settings under **Aspetto**.
+- **Optional shortcuts:** Configure, rename, reorder, show, or remove shortcuts such as Information and Climate, with Material Design Icons. Shortcuts are off by default.
+- **Visual editor:** Three sections: **Rooms**, **Links**, and **Appearance**.
+- **Four languages:** Italian, English, German, and French. Automatic mode follows the Home Assistant user language, with English as fallback.
 - **Edera appearance:** Automatic, Light, and Dark appearance, with optional card border and configurable headings.
-- **Responsive layout:** Two room columns on smartphones, three on tablets, and up to four on wider desktop layouts, depending on available space.
+- **Responsive layout:** Two room columns on smartphones and four on tablets and desktops. An incomplete last row is centered.
 - **Home Assistant navigation:** Uses internal dashboard paths rather than external website links.
 
 Available dashboard destinations depend on the views accessible in your Home Assistant installation. If a view is not listed in the editor, its existing internal path can be entered manually.
@@ -68,20 +70,11 @@ If the `www` directory has just been created, Home Assistant may need to be rest
 
 After adding the card, open its visual configuration editor:
 
-- **Stanze → Aree:** Choose which native Areas appear, change their order, and assign an existing dashboard view to each room.
-- **Stanze → Collegamenti:** Configure the optional shortcuts below the rooms. Shortcuts can be renamed, reordered, hidden, removed, or added.
-- **Aspetto:** Customize the small heading, main title, optional outer border, and Automatic / Light / Dark theme.
+- **Rooms:** Choose which native Areas appear, change their order, assign an existing dashboard view to each room, and set the pill text.
+- **Links:** Configure the optional shortcuts below the rooms. Shortcuts can be turned on, renamed, reordered, removed, or added.
+- **Appearance:** Customize the top label, title, pills, optional outer border, Automatic / Light / Dark theme, and language.
 
 Room names and their icons come from Home Assistant. Dashboard views must already exist; the card does not generate them.
-
-### Example YAML
-
-```yaml
-type: custom:rooms-navigation-card
-title: Le mie stanze
-theme_mode: auto
-show_all_areas: true
-```
 
 Use the visual editor to select rooms and assign destinations. A room without a configured destination remains visible but does not open a page when pressed.
 
@@ -89,6 +82,7 @@ Use the visual editor to select rooms and assign destinations. A room without a 
 
 - Home Assistant with support for custom JavaScript dashboard cards.
 - Access to the Home Assistant Area registry for native room discovery.
+- Floors assigned to Areas in Home Assistant, if you want the floor pills.
 - Existing Home Assistant dashboard views for navigation.
 
 No specific minimum Home Assistant version has been independently verified for this project.
